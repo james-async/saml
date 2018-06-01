@@ -711,6 +711,7 @@ func (test *IdentityProviderTest) TestMarshalAssertion(c *C) {
 }
 
 func (test *IdentityProviderTest) TestMakeResponse(c *C) {
+	c.Skip("issue 152")
 	req := IdpAuthnRequest{
 		Now: TimeNow(),
 		IDP: &test.IDP,
