@@ -156,6 +156,36 @@ func (sp *ServiceProvider) Metadata() *EntityDescriptor {
 	}
 }
 
+func (sp *ServiceProvider) MakeLogoutRequest(subject, idpURL string) (*LogoutRequest, error) {
+	logoutRequest := &LogoutRequest{
+		ID:           fmt.Sprintf("id=%x", randomBytes(20)),
+		Version:      "2.0",
+		IssueInstant: TimeNow(),
+		Destination:  idpURL,
+		Consent:      "",
+		Issuer: &Issuer{
+			Format: "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
+			Value:  sp.MetadataURL.String(),
+		},
+		NameID: &NameID{
+			Format:          "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+			SPNameQualifier: sp.Metadata().EntityID,
+			Value:           subject,
+		},
+		//Signature: signature,
+	}
+
+	return logoutRequest, nil
+}
+
+func (sp *ServiceProvider) MakePostLogoutRequest(subject string) ([]byte, error) {
+	req, err := sp.MakeLogoutRequest(subject, sp.GetLogoutBindingLocation(HTTPPostBinding))
+	if err != nil {
+		return nil, err
+	}
+	return req.Post(), nil
+}
+
 // MakeRedirectAuthenticationRequest creates a SAML authentication request using
 // the HTTP-Redirect binding. It returns a URL that we will redirect the user to
 // in order to start the auth process.
@@ -199,6 +229,19 @@ func (sp *ServiceProvider) GetSSOBindingLocation(binding string) string {
 		for _, singleSignOnService := range idpSSODescriptor.SingleSignOnServices {
 			if singleSignOnService.Binding == binding {
 				return singleSignOnService.Location
+			}
+		}
+	}
+	return ""
+}
+
+// GetLogoutBindingLocation returns URL for the IDP's Single Logout Service binding
+// of the specified type (HTTPRedirectBinding or HTTPPostBinding)
+func (sp *ServiceProvider) GetLogoutBindingLocation(binding string) string {
+	for _, idpSSODescriptor := range sp.IDPMetadata.IDPSSODescriptors {
+		for _, singleLogoutService := range idpSSODescriptor.SingleLogoutServices {
+			if singleLogoutService.Binding == binding {
+				return singleLogoutService.Location
 			}
 		}
 	}
@@ -323,6 +366,39 @@ func (req *AuthnRequest) Post(relayState string) []byte {
 		URL:         req.Destination,
 		SAMLRequest: encodedReqBuf,
 		RelayState:  relayState,
+	}
+
+	rv := bytes.Buffer{}
+	if err := tmpl.Execute(&rv, data); err != nil {
+		panic(err)
+	}
+
+	return rv.Bytes()
+}
+
+// Post returns an HTML form suitable for using the HTTP-POST binding with the request
+func (req *LogoutRequest) Post() []byte {
+	doc := etree.NewDocument()
+	doc.SetRoot(req.Element())
+	reqBuf, err := doc.WriteToBytes()
+	if err != nil {
+		panic(err)
+	}
+	encodedReqBuf := base64.StdEncoding.EncodeToString(reqBuf)
+
+	tmpl := template.Must(template.New("saml-post-form").Parse(`` +
+		`<form method="post" action="{{.URL}}" id="SAMLRequestForm">` +
+		`<input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />` +
+		`<input id="SAMLSubmitButton" type="submit" value="Submit" />` +
+		`</form>` +
+		`<script>document.getElementById('SAMLSubmitButton').style.visibility="hidden";` +
+		`document.getElementById('SAMLRequestForm').submit();</script>`))
+	data := struct {
+		URL         string
+		SAMLRequest string
+	}{
+		URL:         req.Destination,
+		SAMLRequest: encodedReqBuf,
 	}
 
 	rv := bytes.Buffer{}

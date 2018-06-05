@@ -128,6 +128,38 @@ func (r *AuthnRequest) UnmarshalXML(d *xml.Decoder, start xml.StartElement) erro
 	return nil
 }
 
+type LogoutRequest struct {
+	XMLName xml.Name `xml:"urn:oasis:names:tc:SAML:2.0:protocol LogoutRequest"`
+
+	ID           string    `xml:",attr"`
+	Version      string    `xml:",attr"`
+	IssueInstant time.Time `xml:",attr"`
+	Destination  string    `xml:",attr"`
+	Consent      string    `xml:",attr"`
+	Issuer       *Issuer   `xml:"urn:oasis:names:tc:SAML:2.0:assertion Issuer"`
+	NameID       *NameID
+	Signature    *etree.Element
+}
+
+func (r *LogoutRequest) Element() *etree.Element {
+	el := etree.NewElement("samlp:LogoutRequest")
+	el.CreateAttr("xmlns:saml", "urn:oasis:names:tc:SAML:2.0:assertion")
+	el.CreateAttr("xmlns:samlp", "urn:oasis:names:tc:SAML:2.0:protocol")
+	el.CreateAttr("ID", r.ID)
+	el.CreateAttr("Version", r.Version)
+	el.CreateAttr("IssueInstant", r.IssueInstant.Format(timeFormat))
+	if r.Destination != "" {
+		el.CreateAttr("Destination", r.Destination)
+	}
+	if r.Issuer != nil {
+		el.AddChild(r.Issuer.Element())
+	}
+	if r.NameID != nil {
+		el.AddChild(r.NameID.Element())
+	}
+	return el
+}
+
 // Issuer represents the SAML object of the same name.
 //
 // See http://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf

@@ -34,3 +34,18 @@ func (test *SchemaTest) TestAttributeXMLRoundTrip(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(actual, DeepEquals, expected)
 }
+
+func (test *SchemaTest) TestLogoutRequestElement(c *C) {
+
+	logoutRequest := &LogoutRequest{
+		NameID: &NameID{
+			Value: "name_id_value",
+		},
+	}
+
+	doc := etree.NewDocument()
+	doc.SetRoot(logoutRequest.Element())
+	actual, err := doc.WriteToString()
+	c.Assert(err, IsNil)
+	c.Assert(actual, Equals, "<samlp:LogoutRequest xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" ID=\"\" Version=\"\" IssueInstant=\"0001-01-01T00:00:00Z\"><saml:NameID>name_id_value</saml:NameID></samlp:LogoutRequest>")
+}
