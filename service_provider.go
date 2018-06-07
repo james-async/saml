@@ -176,10 +176,7 @@ func (sp *ServiceProvider) MakeLogoutRequest(subject, idpURL string) (*LogoutReq
 			SPNameQualifier: sp.Metadata().EntityID,
 			Value:           subject,
 		},
-		//Signature: signature,
 	}
-
-	fmt.Printf("made logout:\n%+v", logoutRequest)
 	return logoutRequest, nil
 }
 
@@ -192,7 +189,6 @@ func (sp *ServiceProvider) MakePostLogoutRequest(subject string) ([]byte, error)
 }
 
 func (sp *ServiceProvider) MakeRedirectLogoutRequest(subject, relayState string) (*url.URL, error) {
-	fmt.Printf("\n\n\nSubject: %s\n\n\n", subject)
 	req, err := sp.MakeLogoutRequest(subject, sp.GetLogoutBindingLocation(HTTPRedirectBinding))
 	if err != nil {
 		return nil, err
@@ -251,9 +247,7 @@ func (logout *LogoutRequest) Redirect(relayState string) *url.URL {
 	w1.Close()
 
 	rv, _ := url.Parse(logout.Destination)
-
 	query := rv.Query()
-	fmt.Printf("base64 decoded logout:\n%s\n", string(w.Bytes()))
 	query.Set("SAMLRequest", string(w.Bytes()))
 	if relayState != "" {
 		query.Set("RelayState", relayState)

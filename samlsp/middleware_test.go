@@ -72,6 +72,7 @@ func (test *MiddlewareTest) SetUpTest(c *C) {
 			Certificate: test.Certificate,
 			MetadataURL: mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
 			AcsURL:      mustParseURL("https://15661444.ngrok.io/saml2/acs"),
+			LogoutURL:   mustParseURL("https://15661444.ngrok.io/saml2/logout"),
 			IDPMetadata: &saml.EntityDescriptor{},
 			Logger:      logger.DefaultLogger,
 		},
@@ -417,6 +418,30 @@ func (test *MiddlewareTest) TestRejectsInvalidRelayState(c *C) {
 	c.Assert(resp.Code, Equals, http.StatusForbidden)
 	c.Assert(resp.Header().Get("Location"), Equals, "")
 	c.Assert(resp.Header().Get("Set-Cookie"), Equals, "")
+}
+
+func (test *MiddlewareTest) TestLogoutRedirectWhenNoTokenCookie(c *C) {
+
+	req, _ := http.NewRequest("GET", "/saml2/logout", nil)
+	resp := httptest.NewRecorder()
+
+	test.Middleware.ServeHTTP(resp, req)
+
+	c.Assert(resp.Code, Equals, http.StatusOK)
+
+}
+
+func (test *MiddlewareTest) TestLogoutRedirectWhenValidTokenCookie(c *C) {
+	req, _ := http.NewRequest("GET", "/saml2/logout", nil)
+	resp := httptest.NewRecorder()
+	req.AddCookie(&http.Cookie{Name: "ttt", Path: "/", MaxAge: 7200, Value: expectedToken})
+
+	test.Middleware.ServeHTTP(resp, req)
+
+	c.Assert(resp.Code, Equals, http.StatusFound)
+	actualLocation, err := url.Parse(resp.Header().Get("Location"))
+	c.Assert(err, IsNil)
+	c.Assert(actualLocation, NotNil)
 }
 
 func (test *MiddlewareTest) TestHandlesInvalidResponse(c *C) {

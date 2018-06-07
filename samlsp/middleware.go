@@ -71,6 +71,20 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if r.URL.Path == m.ServiceProvider.LogoutURL.Path {
+
+		token := m.GetAuthorizationToken(r)
+		if token == nil {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		request, err := m.ServiceProvider.MakeRedirectLogoutRequest(token.Subject, "relaythis")
+		if err == nil {
+			http.Redirect(w, r, request.String(), http.StatusFound)
+			return
+		}
+	}
+
 	if r.URL.Path == m.ServiceProvider.AcsURL.Path {
 		r.ParseForm()
 		assertion, err := m.ServiceProvider.ParseResponse(r, m.getPossibleRequestIDs(r))
