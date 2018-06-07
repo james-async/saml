@@ -64,6 +64,10 @@ type ServiceProvider struct {
 	// on this host, i.e. https://example.com/saml/acs
 	AcsURL url.URL
 
+	// LogoutURL is the full URL to the SAML Single Logout endpoint
+	// on this host, i.e. https://example.com/saml/logout
+	LogoutURL url.URL
+
 	// IDPMetadata is the metadata from the identity provider.
 	IDPMetadata *EntityDescriptor
 

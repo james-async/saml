@@ -39,6 +39,8 @@ func New(opts Options) (*Middleware, error) {
 	metadataURL.Path = metadataURL.Path + "/saml/metadata"
 	acsURL := opts.URL
 	acsURL.Path = acsURL.Path + "/saml/acs"
+	logoutURL := opts.URL
+	logoutURL.Path = logoutURL.Path + "/saml/logout"
 	logr := opts.Logger
 	if logr == nil {
 		logr = logger.DefaultLogger
@@ -56,6 +58,7 @@ func New(opts Options) (*Middleware, error) {
 			Certificate: opts.Certificate,
 			MetadataURL: metadataURL,
 			AcsURL:      acsURL,
+			LogoutURL:   logoutURL,
 			IDPMetadata: opts.IDPMetadata,
 			ForceAuthn:  &opts.ForceAuthn,
 		},

@@ -59,6 +59,18 @@ func mustParseCertificate(pemStr string) *x509.Certificate {
 	return cert
 }
 
+func (test *ParseTest) TestNewInitializesURLs(c *C) {
+	baseUrl, err := url.Parse("http://unittest.com")
+	c.Assert(err, IsNil)
+	m, err := New(Options{URL: *baseUrl})
+
+	c.Assert(err, IsNil)
+
+	c.Assert(m.ServiceProvider.AcsURL.String(), Equals, "http://unittest.com/saml/acs")
+	c.Assert(m.ServiceProvider.MetadataURL.String(), Equals, "http://unittest.com/saml/metadata")
+	c.Assert(m.ServiceProvider.LogoutURL.String(), Equals, "http://unittest.com/saml/logout")
+}
+
 func (test *ParseTest) TestCanParseTestshibMetadata(c *C) {
 	http.DefaultTransport = mockTransport(func(req *http.Request) (*http.Response, error) {
 		responseBody := `<EntitiesDescriptor Name="urn:mace:shibboleth:testshib:two"
