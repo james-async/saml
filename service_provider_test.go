@@ -140,7 +140,7 @@ func (test *ServiceProviderTest) TestCanProduceMetadata(c *C) {
 		"</EntityDescriptor>")
 }
 
-func (test *ServiceProviderTest) TestCanProduceRedirectRequest(c *C) {
+func (test *ServiceProviderTest) TestCanProduceRedirectRequest_ForAuthnRequest(c *C) {
 	TimeNow = func() time.Time {
 		rv, _ := time.Parse("Mon Jan 2 15:04:05.999999999 UTC 2006", "Mon Dec 1 01:31:21.123456789 UTC 2015")
 		return rv
@@ -164,6 +164,45 @@ func (test *ServiceProviderTest) TestCanProduceRedirectRequest(c *C) {
 	c.Assert(redirectURL.Host, Equals, "idp.testshib.org")
 	c.Assert(redirectURL.Path, Equals, "/idp/profile/SAML2/Redirect/SSO")
 	c.Assert(string(decodedRequest), Equals, "<samlp:AuthnRequest xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" ID=\"id-00020406080a0c0e10121416181a1c1e20222426\" Version=\"2.0\" IssueInstant=\"2015-12-01T01:31:21.123Z\" Destination=\"https://idp.testshib.org/idp/profile/SAML2/Redirect/SSO\" AssertionConsumerServiceURL=\"https://15661444.ngrok.io/saml2/acs\" ProtocolBinding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\"><saml:Issuer Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:entity\">https://15661444.ngrok.io/saml2/metadata</saml:Issuer><samlp:NameIDPolicy Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:transient\" AllowCreate=\"true\"/></samlp:AuthnRequest>")
+}
+
+func (test *ServiceProviderTest) TestCanProduceRedirectRequest_ForLogoutRequest(c *C) {
+	TimeNow = func() time.Time {
+		rv, _ := time.Parse("Mon Jan 2 15:04:05.999999999 UTC 2006", "Mon Dec 1 01:31:21.123456789 UTC 2015")
+		return rv
+	}
+	Clock = dsig.NewFakeClockAt(TimeNow())
+	s := ServiceProvider{
+		Key:         test.Key,
+		Certificate: test.Certificate,
+		MetadataURL: mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
+		AcsURL:      mustParseURL("https://15661444.ngrok.io/saml2/acs"),
+		IDPMetadata: &EntityDescriptor{},
+	}
+	logoutDescriptor := IDPSSODescriptor{
+		SSODescriptor: SSODescriptor{
+			SingleLogoutServices: []Endpoint{
+				Endpoint{
+					Binding:  HTTPRedirectBinding,
+					Location: "https://the_location_url/logout",
+				},
+			},
+		},
+	}
+	s.IDPMetadata.IDPSSODescriptors = append(s.IDPMetadata.IDPSSODescriptors, logoutDescriptor)
+	err := xml.Unmarshal([]byte(test.IDPMetadata), &s.IDPMetadata)
+	c.Assert(err, IsNil)
+	subject := "whoever"
+
+	redirectURL, err := s.MakeRedirectLogoutRequest(subject, "relayState")
+	c.Assert(err, IsNil)
+
+	decodedRequest, err := testsaml.ParseRedirectRequest(redirectURL)
+	c.Assert(err, IsNil)
+	c.Assert(redirectURL.Host, Equals, "the_location_url")
+	c.Assert(redirectURL.Path, Equals, "/logout")
+	c.Assert(string(decodedRequest), Equals,
+		"<samlp:LogoutRequest xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" ID=\"id-00020406080a0c0e10121416181a1c1e20222426\" Version=\"2.0\" IssueInstant=\"2015-12-01T01:31:21.123Z\" Destination=\"https://the_location_url/logout\"><saml:Issuer Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:entity\">https://15661444.ngrok.io/saml2/metadata</saml:Issuer><saml:NameID SPNameQualifier=\"https://15661444.ngrok.io/saml2/metadata\" Format=\"urn:oasis:names:tc:SAML:2.0:nameid-format:transient\">"+subject+"</saml:NameID></samlp:LogoutRequest>")
 }
 
 func (test *ServiceProviderTest) TestCanProducePostRequest(c *C) {
@@ -226,7 +265,7 @@ func (test *ServiceProviderTest) TestCanProducePostLogoutRequest(c *C) {
 
 	c.Assert(string(form), Equals, ``+
 		`<form method="post" action="https://the_location_url/logout" id="SAMLRequestForm">`+
-		`<input type="hidden" name="SAMLRequest" value="PHNhbWxwOkxvZ291dFJlcXVlc3QgeG1sbnM6c2FtbD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFzc2VydGlvbiIgeG1sbnM6c2FtbHA9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpwcm90b2NvbCIgSUQ9ImlkPTAwMDIwNDA2MDgwYTBjMGUxMDEyMTQxNjE4MWExYzFlMjAyMjI0MjYiIFZlcnNpb249IjIuMCIgSXNzdWVJbnN0YW50PSIyMDE1LTEyLTAxVDAxOjMxOjIxWiIgRGVzdGluYXRpb249Imh0dHBzOi8vdGhlX2xvY2F0aW9uX3VybC9sb2dvdXQiPjxzYW1sOklzc3VlciBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OmVudGl0eSI&#43;aHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YTwvc2FtbDpJc3N1ZXI&#43;PHNhbWw6TmFtZUlEIFNQTmFtZVF1YWxpZmllcj0iaHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YSIgRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6bmFtZWlkLWZvcm1hdDp0cmFuc2llbnQiPmZyZWRAZmxpbnN0b25lLm9yZzwvc2FtbDpOYW1lSUQ&#43;PC9zYW1scDpMb2dvdXRSZXF1ZXN0Pg==" />`+
+		`<input type="hidden" name="SAMLRequest" value="PHNhbWxwOkxvZ291dFJlcXVlc3QgeG1sbnM6c2FtbD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFzc2VydGlvbiIgeG1sbnM6c2FtbHA9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpwcm90b2NvbCIgSUQ9ImlkLTAwMDIwNDA2MDgwYTBjMGUxMDEyMTQxNjE4MWExYzFlMjAyMjI0MjYiIFZlcnNpb249IjIuMCIgSXNzdWVJbnN0YW50PSIyMDE1LTEyLTAxVDAxOjMxOjIxWiIgRGVzdGluYXRpb249Imh0dHBzOi8vdGhlX2xvY2F0aW9uX3VybC9sb2dvdXQiPjxzYW1sOklzc3VlciBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OmVudGl0eSI&#43;aHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YTwvc2FtbDpJc3N1ZXI&#43;PHNhbWw6TmFtZUlEIFNQTmFtZVF1YWxpZmllcj0iaHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YSIgRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6bmFtZWlkLWZvcm1hdDp0cmFuc2llbnQiPmZyZWRAZmxpbnN0b25lLm9yZzwvc2FtbDpOYW1lSUQ&#43;PC9zYW1scDpMb2dvdXRSZXF1ZXN0Pg==" />`+
 		`<input id="SAMLSubmitButton" type="submit" value="Submit" /></form>`+
 		`<script>document.getElementById('SAMLSubmitButton').style.visibility="hidden";`+
 		`document.getElementById('SAMLRequestForm').submit();</script>`)

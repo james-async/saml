@@ -158,7 +158,7 @@ func (sp *ServiceProvider) Metadata() *EntityDescriptor {
 
 func (sp *ServiceProvider) MakeLogoutRequest(subject, idpURL string) (*LogoutRequest, error) {
 	logoutRequest := &LogoutRequest{
-		ID:           fmt.Sprintf("id=%x", randomBytes(20)),
+		ID:           fmt.Sprintf("id-%x", randomBytes(20)),
 		Version:      "2.0",
 		IssueInstant: TimeNow(),
 		Destination:  idpURL,
@@ -175,6 +175,7 @@ func (sp *ServiceProvider) MakeLogoutRequest(subject, idpURL string) (*LogoutReq
 		//Signature: signature,
 	}
 
+	fmt.Printf("made logout:\n%+v", logoutRequest)
 	return logoutRequest, nil
 }
 
@@ -184,6 +185,16 @@ func (sp *ServiceProvider) MakePostLogoutRequest(subject string) ([]byte, error)
 		return nil, err
 	}
 	return req.Post(), nil
+}
+
+func (sp *ServiceProvider) MakeRedirectLogoutRequest(subject, relayState string) (*url.URL, error) {
+	fmt.Printf("\n\n\nSubject: %s\n\n\n", subject)
+	req, err := sp.MakeLogoutRequest(subject, sp.GetLogoutBindingLocation(HTTPRedirectBinding))
+	if err != nil {
+		return nil, err
+	}
+
+	return req.Redirect(relayState), nil
 }
 
 // MakeRedirectAuthenticationRequest creates a SAML authentication request using
@@ -213,6 +224,32 @@ func (req *AuthnRequest) Redirect(relayState string) *url.URL {
 	rv, _ := url.Parse(req.Destination)
 
 	query := rv.Query()
+	query.Set("SAMLRequest", string(w.Bytes()))
+	if relayState != "" {
+		query.Set("RelayState", relayState)
+	}
+	rv.RawQuery = query.Encode()
+
+	return rv
+}
+
+// Redirect returns a URL suitable for using the redirect binding with the request
+func (logout *LogoutRequest) Redirect(relayState string) *url.URL {
+	w := &bytes.Buffer{}
+	w1 := base64.NewEncoder(base64.StdEncoding, w)
+	w2, _ := flate.NewWriter(w1, 9)
+	doc := etree.NewDocument()
+	doc.SetRoot(logout.Element())
+	if _, err := doc.WriteTo(w2); err != nil {
+		panic(err)
+	}
+	w2.Close()
+	w1.Close()
+
+	rv, _ := url.Parse(logout.Destination)
+
+	query := rv.Query()
+	fmt.Printf("base64 decoded logout:\n%s\n", string(w.Bytes()))
 	query.Set("SAMLRequest", string(w.Bytes()))
 	if relayState != "" {
 		query.Set("RelayState", relayState)
