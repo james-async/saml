@@ -140,6 +140,12 @@ cvCsEFiJZ4AbF+DgmO6TarJ8O05t8zvnOwJlNCASPZRH/JmF8tX0hoHuAQ==`,
 					}},
 				},
 
+				SingleLogoutServices: []Endpoint{
+					{
+						Binding:  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect",
+						Location: "http://localhost:5000/e087a985171710fb9fb30f30f41384f9/saml2/ls/",
+					},
+				},
 				AssertionConsumerServices: []IndexedEndpoint{{
 					Binding:  "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST",
 					Location: "http://localhost:5000/e087a985171710fb9fb30f30f41384f9/saml2/ls/",

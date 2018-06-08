@@ -68,13 +68,14 @@ func (test *MiddlewareTest) SetUpTest(c *C) {
 
 	test.Middleware = Middleware{
 		ServiceProvider: saml.ServiceProvider{
-			Key:         test.Key,
-			Certificate: test.Certificate,
-			MetadataURL: mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
-			AcsURL:      mustParseURL("https://15661444.ngrok.io/saml2/acs"),
-			LogoutURL:   mustParseURL("https://15661444.ngrok.io/saml2/logout"),
-			IDPMetadata: &saml.EntityDescriptor{},
-			Logger:      logger.DefaultLogger,
+			Key:               test.Key,
+			Certificate:       test.Certificate,
+			MetadataURL:       mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
+			AcsURL:            mustParseURL("https://15661444.ngrok.io/saml2/acs"),
+			LogoutURL:         mustParseURL("https://15661444.ngrok.io/saml2/logout"),
+			LogoutResponseURL: mustParseURL("https://15661444.ngrok.io/saml2/logoutResponse"),
+			IDPMetadata:       &saml.EntityDescriptor{},
+			Logger:            logger.DefaultLogger,
 		},
 		TokenMaxAge: time.Hour * 2,
 	}
@@ -116,6 +117,8 @@ func (test *MiddlewareTest) TestCanProduceMetadata(c *C) {
 		"      <EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#aes256-cbc\"></EncryptionMethod>\n"+
 		"      <EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p\"></EncryptionMethod>\n"+
 		"    </KeyDescriptor>\n"+
+		"    <SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://15661444.ngrok.io/saml2/logoutResponse\"></SingleLogoutService>\n"+
+		"    <SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://15661444.ngrok.io/saml2/logoutResponse\"></SingleLogoutService>\n"+
 		"    <AssertionConsumerService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://15661444.ngrok.io/saml2/acs\" index=\"1\"></AssertionConsumerService>\n"+
 		"  </SPSSODescriptor>\n"+
 		"</EntityDescriptor>")

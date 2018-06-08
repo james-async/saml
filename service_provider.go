@@ -68,6 +68,11 @@ type ServiceProvider struct {
 	// on this host, i.e. https://example.com/saml/logout
 	LogoutURL url.URL
 
+	// LogoutResponseURL is the full URL to the SAML Single Logout response endpoint
+	// on this host that is invoked in response to our IDP logout request
+	// i.e. https://example.com/saml/logoutResponse
+	LogoutResponseURL url.URL
+
 	// IDPMetadata is the metadata from the identity provider.
 	IDPMetadata *EntityDescriptor
 
@@ -147,7 +152,16 @@ func (sp *ServiceProvider) Metadata() *EntityDescriptor {
 				},
 				AuthnRequestsSigned:  &authnRequestsSigned,
 				WantAssertionsSigned: &wantAssertionsSigned,
-
+				SingleLogoutServices: []Endpoint{
+					{
+						Binding:  HTTPPostBinding,
+						Location: sp.LogoutResponseURL.String(),
+					},
+					{
+						Binding:  HTTPRedirectBinding,
+						Location: sp.LogoutResponseURL.String(),
+					},
+				},
 				AssertionConsumerServices: []IndexedEndpoint{
 					{
 						Binding:  HTTPPostBinding,

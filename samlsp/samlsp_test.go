@@ -69,6 +69,7 @@ func (test *ParseTest) TestNewInitializesURLs(c *C) {
 	c.Assert(m.ServiceProvider.AcsURL.String(), Equals, "http://unittest.com/saml/acs")
 	c.Assert(m.ServiceProvider.MetadataURL.String(), Equals, "http://unittest.com/saml/metadata")
 	c.Assert(m.ServiceProvider.LogoutURL.String(), Equals, "http://unittest.com/saml/logout")
+	c.Assert(m.ServiceProvider.LogoutResponseURL.String(), Equals, "http://unittest.com/saml/logoutResponse")
 }
 
 func (test *ParseTest) TestCanParseTestshibMetadata(c *C) {

@@ -217,6 +217,7 @@ type SPSSODescriptor struct {
 	SSODescriptor
 	AuthnRequestsSigned        *bool                       `xml:",attr"`
 	WantAssertionsSigned       *bool                       `xml:",attr"`
+	SingleLogoutServices       []Endpoint                  `xml:"SingleLogoutService"`
 	AssertionConsumerServices  []IndexedEndpoint           `xml:"AssertionConsumerService"`
 	AttributeConsumingServices []AttributeConsumingService `xml:"AttributeConsumingService"`
 }

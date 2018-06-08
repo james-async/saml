@@ -41,6 +41,8 @@ func New(opts Options) (*Middleware, error) {
 	acsURL.Path = acsURL.Path + "/saml/acs"
 	logoutURL := opts.URL
 	logoutURL.Path = logoutURL.Path + "/saml/logout"
+	logoutResponseURL := opts.URL
+	logoutResponseURL.Path = logoutResponseURL.Path + "/saml/logoutResponse"
 	logr := opts.Logger
 	if logr == nil {
 		logr = logger.DefaultLogger
@@ -53,14 +55,15 @@ func New(opts Options) (*Middleware, error) {
 
 	m := &Middleware{
 		ServiceProvider: saml.ServiceProvider{
-			Key:         opts.Key,
-			Logger:      logr,
-			Certificate: opts.Certificate,
-			MetadataURL: metadataURL,
-			AcsURL:      acsURL,
-			LogoutURL:   logoutURL,
-			IDPMetadata: opts.IDPMetadata,
-			ForceAuthn:  &opts.ForceAuthn,
+			Key:               opts.Key,
+			Logger:            logr,
+			Certificate:       opts.Certificate,
+			MetadataURL:       metadataURL,
+			AcsURL:            acsURL,
+			LogoutURL:         logoutURL,
+			LogoutResponseURL: logoutResponseURL,
+			IDPMetadata:       opts.IDPMetadata,
+			ForceAuthn:        &opts.ForceAuthn,
 		},
 		AllowIDPInitiated: opts.AllowIDPInitiated,
 		TokenMaxAge:       tokenMaxAge,
