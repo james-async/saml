@@ -423,6 +423,16 @@ func (test *MiddlewareTest) TestRejectsInvalidRelayState(c *C) {
 	c.Assert(resp.Header().Get("Set-Cookie"), Equals, "")
 }
 
+func (test *MiddlewareTest) TestLogoutResponseReturns200(c *C) {
+
+	req, _ := http.NewRequest("GET", "/saml2/logoutResponse", nil)
+	resp := httptest.NewRecorder()
+
+	test.Middleware.ServeHTTP(resp, req)
+
+	c.Assert(resp.Code, Equals, http.StatusOK)
+}
+
 func (test *MiddlewareTest) TestLogoutRedirectWhenNoTokenCookie(c *C) {
 
 	req, _ := http.NewRequest("GET", "/saml2/logout", nil)

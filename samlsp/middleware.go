@@ -85,6 +85,14 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if r.URL.Path == m.ServiceProvider.LogoutResponseURL.Path {
+		if m.ServiceProvider.Logger != nil {
+			m.ServiceProvider.Logger.Println("dropping logout response on the floor")
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
 	if r.URL.Path == m.ServiceProvider.AcsURL.Path {
 		r.ParseForm()
 		assertion, err := m.ServiceProvider.ParseResponse(r, m.getPossibleRequestIDs(r))
