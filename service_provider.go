@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"crypto/rsa"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/xml"
@@ -199,7 +200,15 @@ func (sp *ServiceProvider) MakePostLogoutRequest(subject string) ([]byte, error)
 	if err != nil {
 		return nil, err
 	}
-	return req.Post(), nil
+
+	keyPair := tls.Certificate{
+		Certificate: [][]byte{sp.Certificate.Raw},
+		PrivateKey:  sp.Key,
+		Leaf:        sp.Certificate,
+	}
+	keyStore := dsig.TLSCertKeyStore(keyPair)
+	signingContext := dsig.NewDefaultSigningContext(keyStore)
+	return req.Post(signingContext), nil
 }
 
 func (sp *ServiceProvider) MakeRedirectLogoutRequest(subject, relayState string) (*url.URL, error) {
@@ -208,7 +217,15 @@ func (sp *ServiceProvider) MakeRedirectLogoutRequest(subject, relayState string)
 		return nil, err
 	}
 
-	return req.Redirect(relayState), nil
+	keyPair := tls.Certificate{
+		Certificate: [][]byte{sp.Certificate.Raw},
+		PrivateKey:  sp.Key,
+		Leaf:        sp.Certificate,
+	}
+	keyStore := dsig.TLSCertKeyStore(keyPair)
+	signingContext := dsig.NewDefaultSigningContext(keyStore)
+
+	return req.Redirect(relayState, signingContext), nil
 }
 
 // MakeRedirectAuthenticationRequest creates a SAML authentication request using
@@ -248,12 +265,15 @@ func (req *AuthnRequest) Redirect(relayState string) *url.URL {
 }
 
 // Redirect returns a URL suitable for using the redirect binding with the request
-func (logout *LogoutRequest) Redirect(relayState string) *url.URL {
+func (logout *LogoutRequest) Redirect(relayState string, signingContext *dsig.SigningContext) *url.URL {
 	w := &bytes.Buffer{}
 	w1 := base64.NewEncoder(base64.StdEncoding, w)
 	w2, _ := flate.NewWriter(w1, 9)
 	doc := etree.NewDocument()
-	doc.SetRoot(logout.Element())
+
+	signed, _ := signingContext.SignEnveloped(logout.Element())
+
+	doc.SetRoot(signed)
 	if _, err := doc.WriteTo(w2); err != nil {
 		panic(err)
 	}
@@ -426,9 +446,12 @@ func (req *AuthnRequest) Post(relayState string) []byte {
 }
 
 // Post returns an HTML form suitable for using the HTTP-POST binding with the request
-func (req *LogoutRequest) Post() []byte {
+func (req *LogoutRequest) Post(signingContext *dsig.SigningContext) []byte {
 	doc := etree.NewDocument()
-	doc.SetRoot(req.Element())
+
+	signed, _ := signingContext.SignEnveloped(req.Element())
+	doc.SetRoot(signed)
+
 	reqBuf, err := doc.WriteToBytes()
 	if err != nil {
 		panic(err)
