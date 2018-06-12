@@ -74,6 +74,10 @@ type ServiceProvider struct {
 	// i.e. https://example.com/saml/logoutResponse
 	LogoutResponseURL url.URL
 
+	// LoggedOutRedirectURL is the full URL to where the client will be redirected
+	// after successfull logout
+	LoggedOutRedirectURL url.URL
+
 	// IDPMetadata is the metadata from the identity provider.
 	IDPMetadata *EntityDescriptor
 

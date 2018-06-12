@@ -27,6 +27,7 @@ type Options struct {
 	AllowIDPInitiated bool
 	IDPMetadata       *saml.EntityDescriptor
 	IDPMetadataURL    *url.URL
+	LoggedOutRedirect url.URL
 	HTTPClient        *http.Client
 	CookieMaxAge      time.Duration
 	CookieSecure      bool
@@ -55,15 +56,16 @@ func New(opts Options) (*Middleware, error) {
 
 	m := &Middleware{
 		ServiceProvider: saml.ServiceProvider{
-			Key:               opts.Key,
-			Logger:            logr,
-			Certificate:       opts.Certificate,
-			MetadataURL:       metadataURL,
-			AcsURL:            acsURL,
-			LogoutURL:         logoutURL,
-			LogoutResponseURL: logoutResponseURL,
-			IDPMetadata:       opts.IDPMetadata,
-			ForceAuthn:        &opts.ForceAuthn,
+			Key:                  opts.Key,
+			Logger:               logr,
+			Certificate:          opts.Certificate,
+			MetadataURL:          metadataURL,
+			AcsURL:               acsURL,
+			LogoutURL:            logoutURL,
+			LogoutResponseURL:    logoutResponseURL,
+			LoggedOutRedirectURL: opts.LoggedOutRedirect,
+			IDPMetadata:          opts.IDPMetadata,
+			ForceAuthn:           &opts.ForceAuthn,
 		},
 		AllowIDPInitiated: opts.AllowIDPInitiated,
 		TokenMaxAge:       tokenMaxAge,
