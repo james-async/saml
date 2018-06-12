@@ -68,14 +68,15 @@ func (test *MiddlewareTest) SetUpTest(c *C) {
 
 	test.Middleware = Middleware{
 		ServiceProvider: saml.ServiceProvider{
-			Key:               test.Key,
-			Certificate:       test.Certificate,
-			MetadataURL:       mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
-			AcsURL:            mustParseURL("https://15661444.ngrok.io/saml2/acs"),
-			LogoutURL:         mustParseURL("https://15661444.ngrok.io/saml2/logout"),
-			LogoutResponseURL: mustParseURL("https://15661444.ngrok.io/saml2/logoutResponse"),
-			IDPMetadata:       &saml.EntityDescriptor{},
-			Logger:            logger.DefaultLogger,
+			Key:                  test.Key,
+			Certificate:          test.Certificate,
+			MetadataURL:          mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
+			AcsURL:               mustParseURL("https://15661444.ngrok.io/saml2/acs"),
+			LoggedOutRedirectURL: mustParseURL("https://15661444.ngrok.io/some/logout"),
+			LogoutURL:            mustParseURL("https://15661444.ngrok.io/saml2/logout"),
+			LogoutResponseURL:    mustParseURL("https://15661444.ngrok.io/saml2/logoutResponse"),
+			IDPMetadata:          &saml.EntityDescriptor{},
+			Logger:               logger.DefaultLogger,
 		},
 		TokenMaxAge: time.Hour * 2,
 	}
@@ -423,25 +424,30 @@ func (test *MiddlewareTest) TestRejectsInvalidRelayState(c *C) {
 	c.Assert(resp.Header().Get("Set-Cookie"), Equals, "")
 }
 
-func (test *MiddlewareTest) TestLogoutResponseReturns200(c *C) {
+func (test *MiddlewareTest) TestLogoutResponseReturnsRedirectToConfiguredDestination(c *C) {
 
 	req, _ := http.NewRequest("GET", "/saml2/logoutResponse", nil)
 	resp := httptest.NewRecorder()
 
 	test.Middleware.ServeHTTP(resp, req)
 
-	c.Assert(resp.Code, Equals, http.StatusOK)
+	c.Assert(resp.Code, Equals, http.StatusFound)
+	c.Assert(resp.Header().Get("Location"), Equals, "https://15661444.ngrok.io/some/logout")
+	cookies := resp.Result().Cookies()
+	c.Assert(len(cookies), Equals, 1)
+	c.Assert(cookies[0].Name, Equals, "ttt")
+	c.Assert(cookies[0].MaxAge, Equals, 0)
 }
 
-func (test *MiddlewareTest) TestLogoutRedirectWhenNoTokenCookie(c *C) {
+func (test *MiddlewareTest) TestLogoutRedirectWhenNoTokenCookieTreatAsIfAlreadyLoggedOut(c *C) {
 
 	req, _ := http.NewRequest("GET", "/saml2/logout", nil)
 	resp := httptest.NewRecorder()
 
 	test.Middleware.ServeHTTP(resp, req)
 
-	c.Assert(resp.Code, Equals, http.StatusOK)
-
+	c.Assert(resp.Code, Equals, http.StatusFound)
+	c.Assert(resp.Header().Get("Location"), Equals, "https://15661444.ngrok.io/some/logout")
 }
 
 func (test *MiddlewareTest) TestLogoutRedirectWhenValidTokenCookie(c *C) {

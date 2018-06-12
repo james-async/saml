@@ -75,10 +75,11 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		token := m.GetAuthorizationToken(r)
 		if token == nil {
-			w.WriteHeader(http.StatusOK)
+			http.Redirect(w, r, m.ServiceProvider.LoggedOutRedirectURL.String(), http.StatusFound)
 			return
 		}
-		request, err := m.ServiceProvider.MakeRedirectLogoutRequest(token.Subject, "relaythis")
+
+		request, err := m.ServiceProvider.MakeRedirectLogoutRequest(token.Subject, "")
 		if err == nil {
 			http.Redirect(w, r, request.String(), http.StatusFound)
 			return
@@ -86,10 +87,8 @@ func (m *Middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if r.URL.Path == m.ServiceProvider.LogoutResponseURL.Path {
-		if m.ServiceProvider.Logger != nil {
-			m.ServiceProvider.Logger.Println("dropping logout response on the floor")
-		}
-		w.WriteHeader(http.StatusOK)
+		m.ClientToken.SetToken(w, r, "", 1) // Effectively deletes the token cookie
+		http.Redirect(w, r, m.ServiceProvider.LoggedOutRedirectURL.String(), http.StatusFound)
 		return
 	}
 
