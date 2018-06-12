@@ -265,15 +265,14 @@ func (req *AuthnRequest) Redirect(relayState string) *url.URL {
 }
 
 // Redirect returns a URL suitable for using the redirect binding with the request
+// reference secion 3.4.4.1 http://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf
 func (logout *LogoutRequest) Redirect(relayState string, signingContext *dsig.SigningContext) *url.URL {
 	w := &bytes.Buffer{}
 	w1 := base64.NewEncoder(base64.StdEncoding, w)
 	w2, _ := flate.NewWriter(w1, 9)
 	doc := etree.NewDocument()
 
-	signed, _ := signingContext.SignEnveloped(logout.Element())
-
-	doc.SetRoot(signed)
+	doc.SetRoot(logout.Element())
 	if _, err := doc.WriteTo(w2); err != nil {
 		panic(err)
 	}
@@ -281,12 +280,26 @@ func (logout *LogoutRequest) Redirect(relayState string, signingContext *dsig.Si
 	w1.Close()
 
 	rv, _ := url.Parse(logout.Destination)
-	query := rv.Query()
-	query.Set("SAMLRequest", string(w.Bytes()))
+
+	rv.RawQuery = "SAMLRequest=" + url.QueryEscape(string(w.Bytes()))
 	if relayState != "" {
-		query.Set("RelayState", relayState)
+		rv.RawQuery = rv.RawQuery + "&RelayState=" + url.QueryEscape(relayState)
 	}
-	rv.RawQuery = query.Encode()
+
+	fmt.Printf("\ndigest:%s\nmethod:%s\n", signingContext.GetDigestAlgorithmIdentifier(), signingContext.GetSignatureMethodIdentifier())
+	rv.RawQuery = rv.RawQuery + "&SigAlg=" + url.QueryEscape(signingContext.GetSignatureMethodIdentifier())
+
+	signatureBytes, err := signingContext.SignString(rv.RawQuery)
+	if err != nil {
+		panic(err)
+	}
+	signature := &bytes.Buffer{}
+	sigenc := base64.NewEncoder(base64.StdEncoding, signature)
+	sigenc.Write(signatureBytes)
+	sigenc.Close()
+
+	rv.RawQuery = rv.RawQuery + "&Signature=" + url.QueryEscape(string(signature.Bytes()))
+	fmt.Println("****** signed ****", string(signature.Bytes()))
 
 	return rv
 }
