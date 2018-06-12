@@ -82,6 +82,16 @@ func (test *ParseTest) TestNewStoresTheLoggedOutRedirectURL(c *C) {
 	c.Assert(m.ServiceProvider.LoggedOutRedirectURL.String(), Equals, expected.String())
 }
 
+func (test *ParseTest) TestNewStoresFalllbackValueWhenNotGivenALoggedOutRedirectURL(c *C) {
+	expected, err := url.Parse("http://unittest.com/")
+	c.Assert(err, IsNil)
+	m, err := New(Options{URL: *expected})
+
+	c.Assert(err, IsNil)
+
+	c.Assert(m.ServiceProvider.LoggedOutRedirectURL.String(), Equals, expected.String())
+}
+
 func (test *ParseTest) TestCanParseTestshibMetadata(c *C) {
 	http.DefaultTransport = mockTransport(func(req *http.Request) (*http.Response, error) {
 		responseBody := `<EntitiesDescriptor Name="urn:mace:shibboleth:testshib:two"

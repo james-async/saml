@@ -44,6 +44,11 @@ func New(opts Options) (*Middleware, error) {
 	logoutURL.Path = logoutURL.Path + "/saml/logout"
 	logoutResponseURL := opts.URL
 	logoutResponseURL.Path = logoutResponseURL.Path + "/saml/logoutResponse"
+	loggedOutRedirectURL := opts.LoggedOutRedirect
+	if loggedOutRedirectURL.String() == "" {
+		loggedOutRedirectURL = opts.URL
+	}
+
 	logr := opts.Logger
 	if logr == nil {
 		logr = logger.DefaultLogger
@@ -63,7 +68,7 @@ func New(opts Options) (*Middleware, error) {
 			AcsURL:               acsURL,
 			LogoutURL:            logoutURL,
 			LogoutResponseURL:    logoutResponseURL,
-			LoggedOutRedirectURL: opts.LoggedOutRedirect,
+			LoggedOutRedirectURL: loggedOutRedirectURL,
 			IDPMetadata:          opts.IDPMetadata,
 			ForceAuthn:           &opts.ForceAuthn,
 		},
