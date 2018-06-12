@@ -285,8 +285,6 @@ func (logout *LogoutRequest) Redirect(relayState string, signingContext *dsig.Si
 	if relayState != "" {
 		rv.RawQuery = rv.RawQuery + "&RelayState=" + url.QueryEscape(relayState)
 	}
-
-	fmt.Printf("\ndigest:%s\nmethod:%s\n", signingContext.GetDigestAlgorithmIdentifier(), signingContext.GetSignatureMethodIdentifier())
 	rv.RawQuery = rv.RawQuery + "&SigAlg=" + url.QueryEscape(signingContext.GetSignatureMethodIdentifier())
 
 	signatureBytes, err := signingContext.SignString(rv.RawQuery)
@@ -299,7 +297,6 @@ func (logout *LogoutRequest) Redirect(relayState string, signingContext *dsig.Si
 	sigenc.Close()
 
 	rv.RawQuery = rv.RawQuery + "&Signature=" + url.QueryEscape(string(signature.Bytes()))
-	fmt.Println("****** signed ****", string(signature.Bytes()))
 
 	return rv
 }
