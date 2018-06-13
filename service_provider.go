@@ -159,10 +159,6 @@ func (sp *ServiceProvider) Metadata() *EntityDescriptor {
 				WantAssertionsSigned: &wantAssertionsSigned,
 				SingleLogoutServices: []Endpoint{
 					{
-						Binding:  HTTPPostBinding,
-						Location: sp.LogoutResponseURL.String(),
-					},
-					{
 						Binding:  HTTPRedirectBinding,
 						Location: sp.LogoutResponseURL.String(),
 					},
@@ -197,22 +193,6 @@ func (sp *ServiceProvider) MakeLogoutRequest(subject, idpURL string) (*LogoutReq
 		},
 	}
 	return logoutRequest, nil
-}
-
-func (sp *ServiceProvider) MakePostLogoutRequest(subject string) ([]byte, error) {
-	req, err := sp.MakeLogoutRequest(subject, sp.GetLogoutBindingLocation(HTTPPostBinding))
-	if err != nil {
-		return nil, err
-	}
-
-	keyPair := tls.Certificate{
-		Certificate: [][]byte{sp.Certificate.Raw},
-		PrivateKey:  sp.Key,
-		Leaf:        sp.Certificate,
-	}
-	keyStore := dsig.TLSCertKeyStore(keyPair)
-	signingContext := dsig.NewDefaultSigningContext(keyStore)
-	return req.Post(signingContext), nil
 }
 
 func (sp *ServiceProvider) MakeRedirectLogoutRequest(subject, relayState string) (*url.URL, error) {
@@ -449,42 +429,6 @@ func (req *AuthnRequest) Post(relayState string) []byte {
 		URL:         req.Destination,
 		SAMLRequest: encodedReqBuf,
 		RelayState:  relayState,
-	}
-
-	rv := bytes.Buffer{}
-	if err := tmpl.Execute(&rv, data); err != nil {
-		panic(err)
-	}
-
-	return rv.Bytes()
-}
-
-// Post returns an HTML form suitable for using the HTTP-POST binding with the request
-func (req *LogoutRequest) Post(signingContext *dsig.SigningContext) []byte {
-	doc := etree.NewDocument()
-
-	signed, _ := signingContext.SignEnveloped(req.Element())
-	doc.SetRoot(signed)
-
-	reqBuf, err := doc.WriteToBytes()
-	if err != nil {
-		panic(err)
-	}
-	encodedReqBuf := base64.StdEncoding.EncodeToString(reqBuf)
-
-	tmpl := template.Must(template.New("saml-post-form").Parse(`` +
-		`<form method="post" action="{{.URL}}" id="SAMLRequestForm">` +
-		`<input type="hidden" name="SAMLRequest" value="{{.SAMLRequest}}" />` +
-		`<input id="SAMLSubmitButton" type="submit" value="Submit" />` +
-		`</form>` +
-		`<script>document.getElementById('SAMLSubmitButton').style.visibility="hidden";` +
-		`document.getElementById('SAMLRequestForm').submit();</script>`))
-	data := struct {
-		URL         string
-		SAMLRequest string
-	}{
-		URL:         req.Destination,
-		SAMLRequest: encodedReqBuf,
 	}
 
 	rv := bytes.Buffer{}

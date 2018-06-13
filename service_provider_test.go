@@ -136,7 +136,6 @@ func (test *ServiceProviderTest) TestCanProduceMetadata(c *C) {
 		"      <EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#aes256-cbc\"></EncryptionMethod>\n"+
 		"      <EncryptionMethod Algorithm=\"http://www.w3.org/2001/04/xmlenc#rsa-oaep-mgf1p\"></EncryptionMethod>\n"+
 		"    </KeyDescriptor>\n"+
-		"    <SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://example.com/saml2/logoutResponse\"></SingleLogoutService>\n"+
 		"    <SingleLogoutService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect\" Location=\"https://example.com/saml2/logoutResponse\"></SingleLogoutService>\n"+
 		"    <AssertionConsumerService Binding=\"urn:oasis:names:tc:SAML:2.0:bindings:HTTP-POST\" Location=\"https://example.com/saml2/acs\" index=\"1\"></AssertionConsumerService>\n"+
 		"  </SPSSODescriptor>\n"+
@@ -230,45 +229,6 @@ func (test *ServiceProviderTest) TestCanProducePostRequest(c *C) {
 		`<form method="post" action="https://idp.testshib.org/idp/profile/SAML2/POST/SSO" id="SAMLRequestForm">`+
 		`<input type="hidden" name="SAMLRequest" value="PHNhbWxwOkF1dGhuUmVxdWVzdCB4bWxuczpzYW1sPSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6YXNzZXJ0aW9uIiB4bWxuczpzYW1scD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOnByb3RvY29sIiBJRD0iaWQtMDAwMjA0MDYwODBhMGMwZTEwMTIxNDE2MTgxYTFjMWUyMDIyMjQyNiIgVmVyc2lvbj0iMi4wIiBJc3N1ZUluc3RhbnQ9IjIwMTUtMTItMDFUMDE6MzE6MjFaIiBEZXN0aW5hdGlvbj0iaHR0cHM6Ly9pZHAudGVzdHNoaWIub3JnL2lkcC9wcm9maWxlL1NBTUwyL1BPU1QvU1NPIiBBc3NlcnRpb25Db25zdW1lclNlcnZpY2VVUkw9Imh0dHBzOi8vMTU2NjE0NDQubmdyb2suaW8vc2FtbDIvYWNzIiBQcm90b2NvbEJpbmRpbmc9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpiaW5kaW5nczpIVFRQLVBPU1QiPjxzYW1sOklzc3VlciBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OmVudGl0eSI&#43;aHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YTwvc2FtbDpJc3N1ZXI&#43;PHNhbWxwOk5hbWVJRFBvbGljeSBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OnRyYW5zaWVudCIgQWxsb3dDcmVhdGU9InRydWUiLz48L3NhbWxwOkF1dGhuUmVxdWVzdD4=" />`+
 		`<input type="hidden" name="RelayState" value="relayState" />`+
-		`<input id="SAMLSubmitButton" type="submit" value="Submit" /></form>`+
-		`<script>document.getElementById('SAMLSubmitButton').style.visibility="hidden";`+
-		`document.getElementById('SAMLRequestForm').submit();</script>`)
-}
-
-func (test *ServiceProviderTest) TestCanProducePostLogoutRequest(c *C) {
-	TimeNow = func() time.Time {
-		rv, _ := time.Parse("Mon Jan 2 15:04:05 UTC 2006", "Mon Dec 1 01:31:21 UTC 2015")
-		return rv
-	}
-	s := ServiceProvider{
-		Key:         test.Key,
-		Certificate: test.Certificate,
-		MetadataURL: mustParseURL("https://15661444.ngrok.io/saml2/metadata"),
-		AcsURL:      mustParseURL("https://15661444.ngrok.io/saml2/acs"),
-		IDPMetadata: &EntityDescriptor{},
-	}
-	logoutDescriptor := IDPSSODescriptor{
-		SSODescriptor: SSODescriptor{
-			SingleLogoutServices: []Endpoint{
-				Endpoint{
-					Binding:  HTTPPostBinding,
-					Location: "https://the_location_url/logout",
-				},
-			},
-		},
-	}
-	s.IDPMetadata.IDPSSODescriptors = append(s.IDPMetadata.IDPSSODescriptors, logoutDescriptor)
-
-	err := xml.Unmarshal([]byte(test.IDPMetadata), &s.IDPMetadata)
-	c.Assert(err, IsNil)
-
-	subject := "fred@flinstone.org"
-	form, err := s.MakePostLogoutRequest(subject)
-	c.Assert(err, IsNil)
-
-	c.Assert(string(form), Equals, ``+
-		`<form method="post" action="https://the_location_url/logout" id="SAMLRequestForm">`+
-		`<input type="hidden" name="SAMLRequest" value="PHNhbWxwOkxvZ291dFJlcXVlc3QgeG1sbnM6c2FtbD0idXJuOm9hc2lzOm5hbWVzOnRjOlNBTUw6Mi4wOmFzc2VydGlvbiIgeG1sbnM6c2FtbHA9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpwcm90b2NvbCIgSUQ9ImlkLTAwMDIwNDA2MDgwYTBjMGUxMDEyMTQxNjE4MWExYzFlMjAyMjI0MjYiIFZlcnNpb249IjIuMCIgSXNzdWVJbnN0YW50PSIyMDE1LTEyLTAxVDAxOjMxOjIxWiIgRGVzdGluYXRpb249Imh0dHBzOi8vdGhlX2xvY2F0aW9uX3VybC9sb2dvdXQiPjxzYW1sOklzc3VlciBGb3JtYXQ9InVybjpvYXNpczpuYW1lczp0YzpTQU1MOjIuMDpuYW1laWQtZm9ybWF0OmVudGl0eSI&#43;aHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YTwvc2FtbDpJc3N1ZXI&#43;PHNhbWw6TmFtZUlEIFNQTmFtZVF1YWxpZmllcj0iaHR0cHM6Ly8xNTY2MTQ0NC5uZ3Jvay5pby9zYW1sMi9tZXRhZGF0YSIgRm9ybWF0PSJ1cm46b2FzaXM6bmFtZXM6dGM6U0FNTDoyLjA6bmFtZWlkLWZvcm1hdDp0cmFuc2llbnQiPmZyZWRAZmxpbnN0b25lLm9yZzwvc2FtbDpOYW1lSUQ&#43;PGRzOlNpZ25hdHVyZSB4bWxuczpkcz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC8wOS94bWxkc2lnIyI&#43;PGRzOlNpZ25lZEluZm8&#43;PGRzOkNhbm9uaWNhbGl6YXRpb25NZXRob2QgQWxnb3JpdGhtPSJodHRwOi8vd3d3LnczLm9yZy8yMDA2LzEyL3htbC1jMTRuMTEiLz48ZHM6U2lnbmF0dXJlTWV0aG9kIEFsZ29yaXRobT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS8wNC94bWxkc2lnLW1vcmUjcnNhLXNoYTI1NiIvPjxkczpSZWZlcmVuY2UgVVJJPSIjaWQtMDAwMjA0MDYwODBhMGMwZTEwMTIxNDE2MTgxYTFjMWUyMDIyMjQyNiI&#43;PGRzOlRyYW5zZm9ybXM&#43;PGRzOlRyYW5zZm9ybSBBbGdvcml0aG09Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvMDkveG1sZHNpZyNlbnZlbG9wZWQtc2lnbmF0dXJlIi8&#43;PGRzOlRyYW5zZm9ybSBBbGdvcml0aG09Imh0dHA6Ly93d3cudzMub3JnLzIwMDYvMTIveG1sLWMxNG4xMSIvPjwvZHM6VHJhbnNmb3Jtcz48ZHM6RGlnZXN0TWV0aG9kIEFsZ29yaXRobT0iaHR0cDovL3d3dy53My5vcmcvMjAwMS8wNC94bWxlbmMjc2hhMjU2Ii8&#43;PGRzOkRpZ2VzdFZhbHVlPkFwcUdISVZvV0tzODI5VlNMSEp4dmNwaHkvQVFQNG1DSzJOSUxBT3puc289PC9kczpEaWdlc3RWYWx1ZT48L2RzOlJlZmVyZW5jZT48L2RzOlNpZ25lZEluZm8&#43;PGRzOlNpZ25hdHVyZVZhbHVlPkluR3FSbnl1ZVJ5ZmJ2OXVHRzRUaTdoY21hWEcya0IvUy9BWjNZUGlvWDdSRWRLdk9Ha3h1NGVvNE1QYUc0WTdHZjZnMzZiQm1scERPdVIxMjM1ckc2Vnd5ZEFBejZvcUVmeHZDWUxEaDNxL3huVUxScnozK1o5SnE3NjZoMVlleWhjVVQ3WkZpUkFHRFJCOU52UVJqWXBrbnN1MGtQT3dMRWZCcUxCNVhKbz08L2RzOlNpZ25hdHVyZVZhbHVlPjxkczpLZXlJbmZvPjxkczpYNTA5RGF0YT48ZHM6WDUwOUNlcnRpZmljYXRlPk1JSUI3ekNDQVZnQ0NRREZ6YktJcDdiM01UQU5CZ2txaGtpRzl3MEJBUVVGQURBOE1Rc3dDUVlEVlFRR0V3SlZVekVMTUFrR0ExVUVDQXdDUjBFeEREQUtCZ05WQkFvTUEyWnZiekVTTUJBR0ExVUVBd3dKYkc5allXeG9iM04wTUI0WERURXpNVEF3TWpBd01EZzFNVm9YRFRFME1UQXdNakF3TURnMU1Wb3dQREVMTUFrR0ExVUVCaE1DVlZNeEN6QUpCZ05WQkFnTUFrZEJNUXd3Q2dZRFZRUUtEQU5tYjI4eEVqQVFCZ05WQkFNTUNXeHZZMkZzYUc5emREQ0JuekFOQmdrcWhraUc5dzBCQVFFRkFBT0JqUUF3Z1lrQ2dZRUExUE1IWW1oWmozMDhrV0xoWlZUNHZPdWxxeC85aWJtNUI4NmZQV3dVS0tRMmkxMk1ZdHowN3R6dWtQeW1pc1REaFFhcXlKOEtxYi82SmpobWVNbkVPZFR2U1BtSE84bTFaVnZlSlU2Tm9LUm4vbVAvQkQ3Rlc1MldoYnJVWExTZUhWU0tmV2tOazZTNGhrOU1WOVRzd1R2eVJJS3ZSc3cwWC9nZm5xa3JvSmNDQXdFQUFUQU5CZ2txaGtpRzl3MEJBUVVGQUFPQmdRQ01NbElPK0dOY0dla2V2S2drYWtwTWRBcUpmczI0bWFHYjkwRHZUTGJSWlJEN1h2bjFNblZCQlM5aHpsWGlGTFlPSW5YQUNNVzVnY29SRmZlVFFMU291TU04bzU3aDB1S2pmVG11b1dITFFMaTZobkYrY3ZDc0VGaUpaNEFiRitEZ21PNlRhcko4TzA1dDh6dm5Pd0psTkNBU1BaUkgvSm1GOHRYMGhvSHVBUT09PC9kczpYNTA5Q2VydGlmaWNhdGU&#43;PC9kczpYNTA5RGF0YT48L2RzOktleUluZm8&#43;PC9kczpTaWduYXR1cmU&#43;PC9zYW1scDpMb2dvdXRSZXF1ZXN0Pg==" />`+
 		`<input id="SAMLSubmitButton" type="submit" value="Submit" /></form>`+
 		`<script>document.getElementById('SAMLSubmitButton').style.visibility="hidden";`+
 		`document.getElementById('SAMLRequestForm').submit();</script>`)
